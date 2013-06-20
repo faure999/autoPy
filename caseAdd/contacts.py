@@ -119,7 +119,7 @@ class contacts:
         trace('before check status')
         self.startStatus = self.isReady()
         trace('after check status')
-        getContactAmount=getContactAmount()
+        self.contactCounter=getContactAmount()
         
     def stop(self):
         '''
@@ -252,7 +252,7 @@ class contacts:
         '''
         if not self.startStatus:
             trace("Wrong code! please start contacts firstly in you code")
-                raise SyntaxError('contacts should be start firstly!')
+            raise SyntaxError('contacts should be start firstly!')
         return True
     
     def snapshot(self,title):
@@ -300,9 +300,10 @@ class contacts:
             
         searchView=self.getView("Search",True)
         searchView.touch()
+        sleep(3)
         self.device.type(str)
         trace("search keyword is: "+str)
-        result = self.getView('id/no_id/28',False,True)
+        result = self.getView('id/no_id/28',iD=True)
         #trace('')
         return result
 	
@@ -316,14 +317,14 @@ class contacts:
         ''' get current Contact Amount,active Activity must be ALL Contacts Activity
         @return: 
         '''
-        if self.getView('All contacts',True) == None:
+        if not self.getView('All contacts',True):
             trace('goto All Contacts Activity')
             self.getMainActivity()
             
-        if self.getView('No contacts.') != None:
+        if self.getView('No contacts.'):
             contactsAmount = 0
         else:
-            contactsText = self.getView('id/no_id/21',False,True).getText()
+            contactsText = self.getView('id/no_id/21',iD=True).getText()
             contactsAmount = int(contactsText.split()[0])
         trace('current contact amount: ' + str(contactsAmount))
         return contactsAmount
@@ -331,7 +332,7 @@ class contacts:
     def getMainActivity(self):
         '''check current Activity,if notMain Actively,  then go to the specifying Main Actively.
         '''
-        while self.getView('All contacts',True) == None:
+        while not self.getView('All contacts',True) :
             self.device.press('KEYCODE_BACK')
             sleep(3)
         self.getView('All contacts',True).touch()
@@ -348,12 +349,11 @@ class contacts:
         trace('launch on contact application')
         
         self.getMainActivity()
-        if self.getView('No contacts.') != None:
+        if self.getView('No contacts.'):
             trace('no contact exists')
             raise 'Could not find any contact data,no record!'
         
         trace('launch on success')
-        #self.contactCounter = self.getContactAmount()
         
         if kwd == '':
             # keyword is empty,delete first contact
@@ -387,12 +387,10 @@ class contacts:
             ok_menu.touch()
             sleep(3)
             
-            # tatal contacts reduce 1
-            self.contactCounter -= 1
             # if current activity is not Main Activity back to Main Activity
             self.getMainActivity()
-            
-            
+        
+        self.contactCounter = self.getContactAmount()
         trace('operation success.')
         	
         
@@ -401,10 +399,10 @@ if __name__ == '__main__':
     trace('start testing...')
     c=contacts(device)
     #c.start()
-    tCB=c.contactCounter
-    c.delete()
-    tCA=c.contactCounter
-    if tCB-tCA ==1:
+    totalContactNumber=c.contactCounter
+    c.delete('123')
+    currentContactNumber=c.contactCounter
+    if totalContactNumber-currentContactNumber ==1:
         trace('data verification success')
-        if tCA == 0:
+        if currentContactNumber == 0:
             trace(' all contacts has been deleted, no record!')
