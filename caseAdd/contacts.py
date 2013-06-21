@@ -324,7 +324,7 @@ class contacts:
         if self.getView('No contacts.'):
             contactsAmount = 0
         else:
-            regex = '\d contacts'
+            regex = '\d+ contacts'
             p = re.compile(regex)
             while not self.vc.findViewWithAttributeThatMatches('text',p):
                 
