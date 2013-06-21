@@ -43,7 +43,7 @@ from com.android.monkeyrunner import MonkeyRunner,MonkeyDevice,MonkeyImage
 from com.dtmilano.android.viewclient import ViewClient
 from log import trace
 
-logPath = r'C:\Users\cninjaho\Desktop'
+logPath = r'.\test'
 logName = 'case_log.txt'
 logFile = logPath + '\\' + logName
 
@@ -119,7 +119,7 @@ class contacts:
         trace('before check status')
         self.startStatus = self.isReady()
         trace('after check status')
-        self.contactCounter=getContactAmount()
+        self.contactCounter=self.getContactAmount()
         
     def stop(self):
         '''
@@ -324,7 +324,7 @@ class contacts:
         if self.getView('No contacts.'):
             contactsAmount = 0
         else:
-            contactsText = self.getView('id/no_id/21',iD=True).getText()
+            contactsText = self.getView('id/no_id/21',iD=True,dump=False).getText()
             contactsAmount = int(contactsText.split()[0])
         trace('current contact amount: ' + str(contactsAmount))
         return contactsAmount
@@ -349,16 +349,16 @@ class contacts:
         trace('launch on contact application')
         
         self.getMainActivity()
-        if self.getView('No contacts.'):
+        if self.getView('No contacts.',dump=False):
             trace('no contact exists')
             raise 'Could not find any contact data,no record!'
         
         trace('launch on success')
         
-        if kwd == '':
+        if not kwd :
             # keyword is empty,delete first contact
             trace('keyword is none, first contact with be delete')
-            find = self.getView('id/no_id/27',False,True)
+            find = self.getView('id/no_id/27',iD=True,dump=False)
             #if find != None:
             
         else :
@@ -391,6 +391,8 @@ class contacts:
             self.getMainActivity()
         
         self.contactCounter = self.getContactAmount()
+        if 0 == self.contactCounter :
+            trace(' all contacts has been deleted, no record!')
         trace('operation success.')
         	
         
@@ -400,9 +402,8 @@ if __name__ == '__main__':
     c=contacts(device)
     #c.start()
     totalContactNumber=c.contactCounter
-    c.delete('123')
+    c.delete()
     currentContactNumber=c.contactCounter
     if totalContactNumber-currentContactNumber ==1:
         trace('data verification success')
-        if currentContactNumber == 0:
-            trace(' all contacts has been deleted, no record!')
+    
