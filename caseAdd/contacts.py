@@ -31,7 +31,7 @@
 
 __version__ = '0.3'
 
-import os,sys
+import os,sys,re
 try:
     for p in os.environ['PYTHONPATH'].split(';'):
        if not p in sys.path:
@@ -324,8 +324,16 @@ class contacts:
         if self.getView('No contacts.'):
             contactsAmount = 0
         else:
-            contactsText = self.getView('id/no_id/21',iD=True,dump=False).getText()
-            contactsAmount = int(contactsText.split()[0])
+            regex = '\d contacts'
+            p = re.compile(regex)
+            while not self.vc.findViewWithAttributeThatMatches('text',p):
+                
+                self.slide('down')
+                self.vc.dump()
+                sleep(5)
+            viewText = self.vc.findViewWithAttributeThatMatches('text',p).getText()
+            contactsAmount = int(viewText.split()[0])
+                    
         trace('current contact amount: ' + str(contactsAmount))
         return contactsAmount
         
@@ -345,8 +353,8 @@ class contacts:
         @param kwd: keyword which contact to be delete, if none,delete first contact
         @return: 
         '''
-        self.start()
-        trace('launch on contact application')
+        #self.start()
+        #trace('launch on contact application')
         
         self.getMainActivity()
         if self.getView('No contacts.',dump=False):
@@ -367,7 +375,7 @@ class contacts:
             find = self.search(kwd)
             trace('')
             # if find != None:
-        if find == None:
+        if not find :
             trace('Could not find the contact : ' + kwd)
             raise 'Could not find the contact : ' + kwd
         else:
@@ -400,7 +408,7 @@ if __name__ == '__main__':
     device=MonkeyRunner.waitForConnection()
     trace('start testing...')
     c=contacts(device)
-    #c.start()
+    c.start()
     totalContactNumber=c.contactCounter
     c.delete()
     currentContactNumber=c.contactCounter
