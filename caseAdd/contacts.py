@@ -6,6 +6,38 @@
 
 ############################ CHANGE HISTORY ############################
 
+# VERSION : 1.1 Eleventh Release 26-Jun-13 Jason Hou
+# REASON : Update implementation
+# REFERENCE : 
+# DESCRIPTION : 1. new add meun() and scroll() method
+
+# VERSION : 1.0 Tenth Release 25-Jun-13 Jason Hou
+# REASON : Update implementation
+# REFERENCE : 
+# DESCRIPTION : 1. update slide() method to support sliding in specified view
+
+# VERSION : 0.9 Ninth Release 25-Jun-13 Jason Hou
+# REASON : Update implementation
+# REFERENCE : 
+# DESCRIPTION : 1. new add favor() method
+
+# VERSION : 0.8 Seventh Release 24-Jun-13 Glen Fan
+# REASON : Update implementation
+# REFERENCE : 
+# DESCRIPTION :	1. new add goEditExistContact(), slideByView(), editCompany(),\
+#				editAnotherField(),editDetails() method
+
+# VERSION : 0.7 Seventh Release 24-Jun-13 Faure Zhang
+# REASON : Update implementation
+# REFERENCE : 
+# DESCRIPTION :	1. new add delete() method
+#				2. rewrite getCounter() method	
+
+# VERSION : 0.6 Sixth Release 24-Jun-13 Donner Li
+# REASON : Update implementation
+# REFERENCE : 
+# DESCRIPTION :	1. new add search(), sortAndViewAs() method
+
 # VERSION : 0.5 Fiveth Release 24-Jun-13 Jason Hou
 # REASON : Update implementation
 # REFERENCE : 
@@ -47,21 +79,21 @@
 ############################ CHANGE HISTORY ############################
 
 
-__version__ = '0.4'
+__version__ = '1.2'
 
 import os,sys,re
 try:
-    for p in os.environ['PYTHONPATH'].split(';'):
-       if not p in sys.path:
-          sys.path.append(p)
+	for p in os.environ['PYTHONPATH'].split(';'):
+		if not p in sys.path:
+			sys.path.append(p)
 except:
-    pass
+	pass
 
 from com.android.monkeyrunner import MonkeyRunner,MonkeyDevice,MonkeyImage
 from com.dtmilano.android.viewclient import ViewClient
 from log import trace
 
-logPath = r'C:\Users\cninjaho\Desktop'
+logPath = r'.\test'
 logName = 'case_log.txt'
 logFile = logPath + '\\' + logName
 
@@ -89,9 +121,9 @@ class contacts:
 		constructor
 		
 		@type device: MonkeyDevice
-        @param device: The device or emulator connected
+		@param device: The device or emulator connected
 		@type devID: str
-        @param serialno: the serial number of the device or emulator to connect to
+		@param serialno: the serial number of the device or emulator to connect to
 		@type sample: boolean
 		@param sample: whether take snapshot as an sampling
 		'''
@@ -147,6 +179,28 @@ class contacts:
 		trace('force stop contacts package %s' % package)
 		self.startStatus = False
 	
+	def menu(self):
+		'''
+		press menu
+		'''
+		self.device.press('KEYCODE_MENU','DOWN_AND_UP')
+		trace('press menu')
+		
+	def scroll(self,down=True,times=1):
+		'''
+		scoll up or down for some times then touch the highlight submenu item
+		
+		@type down: boolead
+		@param down: scroll down if True or scroll up
+		@type times: int
+		@param times: how many times to scroll
+		'''
+		keycode = 'KEYCODE_DPAD_DOWN' if down else 'KEYCODE_DPAD_UP'
+		for i in range(times):
+			self.device.press(keycode,'DOWN_AND_UP')
+			trace('scroll %s' % keycode.split('_')[-1])
+		self.device.press('KEYCODE_ENTER','DOWN_AND_UP')
+		
 	def back(self):
 		'''
 		press back
@@ -154,22 +208,35 @@ class contacts:
 		self.device.press('KEYCODE_BACK','DOWN_AND_UP')
 		trace('press back')
 		
-	def slide(self,str):
+	def slide(self,str,view=None):
 		'''
 		slide the screen
 		
 		@type: str
 		@param: 'left','right','up','down'
+		@type view: 
+		@param view: specify the view, default to None  
 		'''
 		if str not in ['left','right','up','down']:
 			raise SyntaxError("wrong parameter: choose from 'left','right','up' or 'down'")
+		try:
+			cX,cY = view.getCenter()
+			width = view.getWidth()
+			height = view.getHeight()
+			cL = cX - width/4, cY
+			cR = cX + width/4, cY
+			cU = cX, cY - height/4
+			cD = cX, cY + height/4
+		except AttributeError:
+			pass
+		(left, right, up, down) = (cL, cR, cU, cD) if view else (self.left, self.right, self.up, self.down)
 		nav = {
-			'left':{'start':self.right,'end':self.left},
-			'right':{'start':self.left,'end':self.right},
-			'up':{'start':self.down,'end':self.up},
-			'down':{'start':self.up,'end':self.down}
+			'left':{'start':right,'end':left},
+			'right':{'start':left,'end':right},
+			'up':{'start':down,'end':up},
+			'down':{'start':up,'end':down}
 			}
-		self.device.drag(nav[str]['start'], nav[str]['end'], 0.1, 1)
+		self.device.drag(nav[str]['start'], nav[str]['end'], 0.1, 10)
 		trace('slide the screen from %s to %s ' % (nav[str]['start'],nav[str]['end']))
 		sleep(2)
 		
@@ -212,8 +279,7 @@ class contacts:
 	def isReady(self):
 		'''
 		check whether the contacts is ready.
-        
-        @return: True
+		@return: True
 		'''
 		while True:
 			view=self.getView('Contacts list is being updated to reflect the change of language.')
@@ -245,18 +311,20 @@ class contacts:
 		
 		@return: the current contacts counter
 		'''
-		self.goList(self)
+		self.goList()
 		if self.isEmpty():
 			self.contactCounter=0
 		else:
-			while not self.getView('\d+ contacts?',regex=True):
-				self.slide('down')
-				sleep(3)
-                
-			self.contactCounter = int(self.getView('\d+ contacts?',regex=True,dump = False).getText().split()[0])
+			while True:
+				try:
+					self.contactCounter = int(self.getView('\d+ contacts?',regex=True).getText().split()[0])
+					break
+				except AttributeError:
+					self.slide('down')
+					sleep(1)
 		trace('current contacts counter is %d' % self.contactCounter)
 		return self.contactCounter
-            
+
 	def goList(self):
 		'''
 		check whether the screen is in contacts list view, if not, go list view via pressing back key
@@ -285,28 +353,20 @@ class contacts:
 		self.check()
 		try:
 			self.getView('Add Contact',cD=True,dump=False).touch()
-
 			trace('Touch "Add Contact"')
 			sleep(5)
 			return True
 		except AttributeError: pass
 		try:
-
-
 			self.getView('Create a new contact',dump=False).touch()
-
 			trace('Touch "Create a new contact"')
-
 			sleep(5)
 			self.getView('Keep local').touch()
-
 			trace('Select "Keep local"')
 			sleep(5)
-
 			return True
 		except AttributeError: pass
 						
-
 	def check(self):
 		'''
 		check whether the contacts is started before other operation about contacts
@@ -379,72 +439,223 @@ class contacts:
 		finally:
 			sleep(5)
 			self.goList()
-			
-	def editDetails(self,phone=''):
-		pass
-	
-	def search(self,str):
-		pass
-	
-	def sort(self):
-		pass
+
+	def goEditExistContact(self,str):
+		trace('Search a contact to edit')
+		view=self.search(str)
+		if not view:
+			raise SyntaxError('No '+str+' contact to edit')
+		view.touch()
+		sleep(4)
+		self.device.press('KEYCODE_MENU')
+		sleep(2)
+		self.device.press('KEYCODE_DPAD_DOWN')
+		sleep(1)
+		self.device.press('KEYCODE_ENTER')
+		sleep(3)	
+
+	def editCompany(self,company,action):
+		view=self.getView('Add organization')
+		if view:
+			trace('Step: add a organization info')
+			view.touch()
+			sleep(1)
+			trace('add the company info')
+			self.device.type(company)
+			sleep(1)
+			view=self.getView('Title')
+			trace("add a company's Title")
+			view.type(company)
+		else:
+			trace('Step: Edit the organization info')  
+			view=self.getView('id/no_id/42',iD=True)
+			self.wipe(view)
+			trace('Edit the company info')
+			self.device.type(company)
+			view=self.getView('id/no_id/43',iD=True)
+			trace("Edit the company's Title")
+			self.wipe(view)
+			self.device.type(company)
+
+	def editAnotherField(self,fieldName,content,action):
+		find=1
+		view=self.getView(fieldName)
+		view2=self.getView('Add another field')
+		while not view:
+			self.device.drag((440,760),(440,160),2,5)
+			sleep(1)
+			view=self.getView(fieldName)
+			view2=self.getView('Add another field')
+			if view2:
+				if not view:
+					find=0
+					break
+		if 0==find:
+			trace('Step: add field '+fieldName+' info')
+			view2.touch()
+			trace('Click Add another field')
+			sleep(2)
+			view=self.getView(fieldName)
+			if not view:
+				view2=self.getView('id/no_id/2',iD=True)
+				self.slide('up',view2)
+				view=self.getView(fieldName)
+			view.touch()
+			sleep(1)
+			#view=self.getView(fieldName)
+			#view2=self.getView(view.getId()[:-2]+str(int(view.getId()[-2:])+6),iD=True)
+			#view2.type(content)
+			sleep(1)
+			self.device.type(content)
+			sleep(2)
+		else:
+			trace('Step: Edit field '+fieldName+' info')
+			view2=self.getView(view.getId()[:-2]+str(int(view.getId()[-2:])+6),iD=True)
+			self.wipe(view2)
+			sleep(1)
+			view2.type(content)
+			sleep(1)
+			   
+	def editDetails(self,nameOrNumber,company='',website='',nickname='',notes='',action='add'):
+		'''
 		
-	def favorite(self,name=''):
-		pass
+		'''
+		self.goEditExistContact(nameOrNumber)
+		if not company=='':
+			self.editCompany(company,action)
+		if not website=='':
+			self.editAnotherField('Website',website,action)
+		if not nickname=='':
+			self.editAnotherField('Nickname',nickname,action)        
+		if not website=='':
+			self.editAnotherField('Notes',notes,action)          
+		view=self.getView('Done')
+		trace('Click Done')
+		view.touch()
+		sleep(3)
+		self.goList()
+
+	def search(self,str):
+		'''
+		@type str: str
+		@param str: specify the search keyword
+		##@return: the view of search result if search result is not null, else return None
+		'''		
+		trace("start searching...")
+		self.goList()
+		
+		searchView=self.getView("Search",True)
+		searchView.touch()
+		sleep(2)
+		self.device.type(str)
+		trace("search keyword is: "+str)
+		#the id of 1st search result is always 28
+		if self.getView("No contacts"):
+			trace("No contact searched")
+			return None
+		else:
+			return self.getView("id/no_id/28",iD=True)  
+		
+	def sortAndViewAs(self, sortByFirstName=True, viewAsFirstNameFirst=True):
+		'''
+		sort contact name
+		@type sortByFirstName: boolean
+		@param sortByFirstName: whether sort contact name by first name  
+		@type viewAsFirstNameFirst: boolean
+		@param viewAsFirstNameFirst: whether view contact by first name first              
+		'''
+		self.goList()              
+		
+		trace("start sorting...")
+		self.device.press("KEYCODE_MENU","DOWN_AND_UP")                
+		settingsView=self.getView("Settings")
+		settingsView.touch()
+		sleep(2)
+		
+		self.getView("Sort list by").touch()
+		
+		if sortByFirstName:                        
+			self.getView("First name").touch()
+			sleep(2)
+			self.getView("View contact names as").touch()
+			sleep(2)
+			if viewAsFirstNameFirst:
+				self.getView("First name first").touch()
+			else:
+				self.getView("Last name first").touch()
+		else:
+			self.getView("Last name").touch()
+			sleep(2)
+			self.getView("View contact names as").touch()
+			sleep(2)
+			if viewAsFirstNameFirst:
+				self.getView("First name first").touch()
+			else:
+				self.getView("Last name first").touch()
+		sleep(2)       
+		
+	def favor(self,str,favor=True):
+		'''
+		add or cancel contact to favorites
+		
+		@type str: str
+		@param str: specify the search string
+		@type favor: boolean
+		@param favor: add if True
+		'''
+		try:
+			self.search(str).touch()
+			sleep(3)
+		except AttributeError:
+			trace('no matched contact found, operation failed!')
+			self.goList()
+			return False
+		aim, action = ('Add to favorites', 'add') if favor else ('Remove from favorites', 'remov')
+		try:
+			self.getView(aim, cD=True).touch()
+			trace('%s successfully' % aim)
+		except AttributeError:
+			trace('%s has been %sed in favorites, not have to %s repeatedly' % (str, action, action))
+		sleep(3)
+		self.goList()
+		return True
 		
 	def delete(self,kwd = ''):
         
 		'''delete one contact
 		@type kwd: string
 		@param kwd: keyword which contact to be delete, if none,delete first contact
-		@return: 
+		@return: True if operate sucess, False if operate fail.
 		'''
-		#self.start()
-		#trace('launch on contact application')
-        
-		self.goList()
 		if self.isEmpty():
 			trace('Could not find any contact data,no record!')
-			raise SyntaxError('Could not find any contact data,no record!')
+			return False
 		
-		if not kwd :
-			# keyword is empty,delete first contact
-			trace('keyword is none, first contact with be delete')
-			find = self.getView('id/no_id/27',iD=True,dump=False)
-			#if find != None:
-			
-		else :
-			# keyword is not none
-			# search specifying contact by keyword
-			find = self.search(kwd)
-			trace('')
-			# if find != None:
-		if not find :
-			trace('Could not find the contact : ' + kwd)
-			raise SyntaxError('Could not find the contact : ' + kwd)
-		else:
+		find = self.search(kwd) if kwd else self.getView('id/no_id/27',iD=True,dump=False)
+		try:
 			# delete operate 
 			find.touch()
-			sleep(3)
-			trace('show contact detail information')
-			sleep(1)
-			self.device.press('KEYCODE_MENU')
 			sleep(4)
-			delete_menu = self.getView('Delete')
+			trace('show contact detail information')
+			self.menu()
+			sleep(3)
+			self.scroll(times=3)
 			trace('choose delete contact')
-			delete_menu.touch()
-			
+		except AttributeError:
+			trace('Could not find the contact : ' + kwd)
+			return False
+		try:
 			# confirm delete operate
 			ok_menu = self.getView('OK')
 			ok_menu.touch()
 			sleep(3)
-			
-		# if current activity is not Main Activity back to Main Activity
+		except AttributeError:
+			trace('OK button not found')
+			return False
 		self.goList()
+		return True
+			
 		
-		if 0 == self.getCounter() :
-			trace(' all contacts has been deleted, no record!')
-		trace('operation success.')
 if __name__ == '__main__':
 	device=MonkeyRunner.waitForConnection()
 	trace('=' * 80)
@@ -453,14 +664,18 @@ if __name__ == '__main__':
 	trace('complete init')
 	c.start()
 	trace('complete contacts activity starting')
+	
 	before = c.getCounter()
 	c.delete()
 	after = c.getCounter()
-	if after - before ==1:
+	if before - after == 1:
 		trace('data verification success!')
+
 	
 	'''
 	############################ add contact case Beginning ############################
+	c.favor('jason1')
+	
 	for i in range(5):
 		result='failed'
 		try:	
@@ -469,8 +684,6 @@ if __name__ == '__main__':
 			after=c.getCounter()
 			if after - before == 1:
 				result='passed'
-
-
 		# except	Exception,e:
 			# result='unknown'
 			# details=str(e)
@@ -479,6 +692,11 @@ if __name__ == '__main__':
 			# if 'unknown' == result:
 				# trace('Exception details: ' + details)
 			sleep(5)
+	
+	c.favor('jason')
+	c.favor('jason')
+	c.favor('jason',False)
+	c.favor('jason',False)
 	trace('end testing')
 	############################ add contact case Finished ############################
 	'''
