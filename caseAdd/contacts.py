@@ -93,7 +93,7 @@ from com.android.monkeyrunner import MonkeyRunner,MonkeyDevice,MonkeyImage
 from com.dtmilano.android.viewclient import ViewClient
 from log import trace
 
-logPath = r'.\test'
+logPath = r'C:\Users\cninjaho\Desktop'
 logName = 'case_log.txt'
 logFile = logPath + '\\' + logName
 
@@ -198,7 +198,7 @@ class contacts:
 		keycode = 'KEYCODE_DPAD_DOWN' if down else 'KEYCODE_DPAD_UP'
 		for i in range(times):
 			self.device.press(keycode,'DOWN_AND_UP')
-			trace('scroll %s' % keycode.split('_')[-1])
+			trace('scroll %s' % keycode.split('_')[-1].lower())
 		self.device.press('KEYCODE_ENTER','DOWN_AND_UP')
 		
 	def back(self):
